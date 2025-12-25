@@ -2,84 +2,131 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Magic Christmas Tree 🎄</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Magic Christmas Tree 🎄 (Ultra Smooth)</title>
 
   <!-- MediaPipe (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
   <style>
+    :root {
+      --pad-top: env(safe-area-inset-top, 0px);
+      --pad-right: env(safe-area-inset-right, 0px);
+      --pad-bottom: env(safe-area-inset-bottom, 0px);
+      --pad-left: env(safe-area-inset-left, 0px);
+    }
+
     body {
-      background-color: #000;
+      background: #000;
       margin: 0;
       overflow: hidden;
       font-family: Arial, sans-serif;
-      color: white;
+      color: #fff;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .input_video { display: none; }
-
-    canvas {
+    /* iOS：避免 display:none 造成影像來源不穩 */
+    #inputVideo {
       position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
+      width: 1px;
+      height: 1px;
+      left: -10px;
+      top: -10px;
+      opacity: 0.001;
+      pointer-events: none;
     }
 
-    #loading {
+    canvas { position: absolute; inset: 0; z-index: 1; }
+
+    #overlay {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 22px;
-      color: #00ff00;
+      inset: 0;
+      display: grid;
+      place-items: center;
       z-index: 100;
-      text-align: center;
-      line-height: 1.4;
-      padding: 14px 18px;
-      border-radius: 12px;
       background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(6px);
-      border: 1px solid rgba(0,255,0,0.25);
-      max-width: min(520px, 90vw);
+      backdrop-filter: blur(8px);
+      padding: calc(16px + var(--pad-top)) calc(16px + var(--pad-right)) calc(16px + var(--pad-bottom)) calc(16px + var(--pad-left));
+    }
+
+    #panel {
+      width: min(560px, 92vw);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.55);
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    #title { font-size: 20px; margin: 0 0 8px 0; color: #00ff88; }
+    #desc {
+      margin: 0 0 14px 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    button {
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.92);
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      backdrop-filter: blur(8px);
+      transition: transform .12s ease, background .12s ease;
+    }
+    button:hover { background: rgba(255,255,255,0.12); }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    #hint {
+      margin-top: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
     }
 
     #instruction {
       position: absolute;
-      bottom: 16px;
-      width: 100%;
-      text-align: center;
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.85);
+      left: 0;
+      right: 0;
+      bottom: calc(14px + var(--pad-bottom));
       z-index: 50;
+      text-align: center;
+      font-size: 15px;
+      color: rgba(255,255,255,0.88);
+      text-shadow: 0 0 6px rgba(0,0,0,0.8);
+      padding: 0 14px;
       pointer-events: none;
-      text-shadow: 0 0 5px #000;
-      padding: 0 12px;
       line-height: 1.4;
     }
 
-    #cam-preview {
+    #camPreview {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: calc(10px + var(--pad-top));
+      left: calc(10px + var(--pad-left));
       width: 160px;
       height: 120px;
       z-index: 20;
-      border: 2px solid rgba(255,255,255,0.15);
-      border-radius: 10px;
-      transform: scaleX(-1);
+      border: 2px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
       opacity: 0.55;
       background: rgba(255,255,255,0.05);
+      transform: scaleX(-1);
     }
 
     #badge {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: calc(10px + var(--pad-top));
+      right: calc(10px + var(--pad-right));
       z-index: 60;
       font-size: 13px;
       padding: 8px 10px;
@@ -91,153 +138,84 @@
     }
     #badge b { color: #fff; }
 
-    /* 一鍵切換按鈕 */
-    #toggleMode {
+    #controls {
       position: absolute;
-      top: 52px;
-      right: 10px;
+      top: calc(52px + var(--pad-top));
+      right: calc(10px + var(--pad-right));
       z-index: 70;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(0,0,0,0.35);
-      color: rgba(255,255,255,0.9);
-      padding: 10px 12px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 13px;
-      backdrop-filter: blur(6px);
-      transition: transform .12s ease, background .12s ease;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: min(92vw, 520px);
     }
-    #toggleMode:hover { background: rgba(255,255,255,0.08); }
-    #toggleMode:active { transform: scale(0.98); }
 
-    /* 展示模式：乾淨畫面 */
-    body.showcase #cam-preview,
+    body.showcase #camPreview,
     body.showcase #instruction,
     body.showcase #badge {
       display: none !important;
     }
-    body.showcase #toggleMode { top: 10px; }
+    body.showcase #controls { top: calc(10px + var(--pad-top)); }
   </style>
 </head>
-<body>
 
-  <div id="loading">
-    正在啟動魔法相機...<br>
-    <span style="font-size:14px; color:#bbb;">(請允許相機權限；或按住 Space 也可打開聖誕樹)</span>
+<body>
+  <video id="inputVideo" playsinline muted></video>
+
+  <canvas id="camPreview"></canvas>
+  <canvas id="mainCanvas"></canvas>
+
+  <div id="badge">狀態：<b id="statusText">尚未開始</b></div>
+
+  <div id="controls">
+    <button id="switchCamBtn" type="button" disabled>切換鏡頭</button>
+    <button id="toggleModeBtn" type="button">切換：展示模式</button>
+    <button id="closeTreeBtn" type="button" disabled>關閉樹</button>
   </div>
 
   <div id="instruction">
-    ✋ 對著鏡頭「單手張開」來打開聖誕樹，點擊掉落的禮物！ 🎁
-    <br>
-    <span style="opacity:.75;">備援：按住 <b>Space</b> 可打開樹｜按 <b>H</b> 切換展示/教學</span>
+    ✋ 單手「張開一下」打開樹（鎖定開啟）→ 放下手 → 直接點空中飄浮禮物 🎁<br>
+    <span style="opacity:.75;">點禮物會延長開啟時間｜桌機備援：按住 Space 全開｜按 H 切換展示/教學</span>
   </div>
 
-  <div id="badge">狀態：<b id="statusText">初始化</b></div>
-  <button id="toggleMode" type="button">切換：展示模式</button>
-
-  <video class="input_video" playsinline></video>
-  <canvas id="cam-preview"></canvas>
-  <canvas id="main-canvas"></canvas>
+  <div id="overlay">
+    <div id="panel">
+      <h2 id="title">Magic Christmas Tree 🎄（最順不卡）</h2>
+      <p id="desc">
+        iOS / Android：請按「開始」授權相機（需 HTTPS 或 localhost）。<br>
+        手勢只用來「觸發開樹」；開樹後會暫停偵測，讓你點禮物不卡。
+      </p>
+      <div class="row">
+        <button id="startBtn" type="button">開始（開啟相機）</button>
+      </div>
+      <div id="hint">
+        相機被擋：請用 HTTPS（GitHub Pages）並允許相機。<br>
+        桌機可按住 Space 直接展示效果。
+      </div>
+    </div>
+  </div>
 
   <script>
     // =========================
-    // 0) 基本元素
+    // 基本 & 效能參數
     // =========================
-    const videoElement = document.getElementsByClassName('input_video')[0];
-    const previewCanvas = document.getElementById('cam-preview');
-    const previewCtx = previewCanvas.getContext('2d', { alpha: true });
+    const isMobile = matchMedia("(pointer:coarse)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    const canvas = document.getElementById('main-canvas');
-    const ctx = canvas.getContext('2d', { alpha: true });
+    // 手勢推送頻率（更省 CPU）
+    const HANDS_INTERVAL_MS = isMobile ? 66 : 50; // 15fps / 20fps
 
-    const loading = document.getElementById('loading');
-    const statusText = document.getElementById('statusText');
+    // 手機不要太高解析，DPR 上限 2（最關鍵的順暢來源之一）
+    const DPR_MAX = 2;
 
-    const toggleBtn = document.getElementById('toggleMode');
-    const MODE_KEY = "magic_tree_mode";
+    // 粒子基礎量（會再用 stride 動態降載）
+    const PARTICLES_BASE = isMobile ? 520 : 880;
 
-    let width = 0, height = 0;
+    // 同時飄浮禮物最大數（越多越重）
+    const MAX_GIFTS_BASE = isMobile ? 8 : 12;
 
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, s => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[s]));
-    }
+    // 禮物生成節奏
+    const GIFT_SPAWN_INTERVAL_MS = isMobile ? 520 : 420;
 
-    function setStatus(text, isError = false) {
-      statusText.textContent = text;
-      if (isError) {
-        loading.style.display = "block";
-        loading.style.color = "#ff4d4d";
-        loading.innerHTML =
-          `啟動失敗 / 需要協助<br>` +
-          `<span style="font-size:14px; color:#ffd1d1;">${escapeHtml(text)}</span><br>` +
-          `<span style="font-size:14px; color:#bbb;">提示：請用 HTTPS 或 localhost 開啟，並允許相機；或按住 Space 仍可示範。</span>`;
-      }
-    }
-
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      previewCanvas.width = 320;
-      previewCanvas.height = 240;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // =========================
-    // 0.5) 展示/教學模式切換
-    // =========================
-    function getSavedMode() {
-      try { return localStorage.getItem(MODE_KEY); } catch { return null; }
-    }
-    function saveMode(mode) {
-      try { localStorage.setItem(MODE_KEY, mode); } catch {}
-    }
-    function applyMode(mode) {
-      const isShowcase = (mode === "showcase");
-      document.body.classList.toggle("showcase", isShowcase);
-      toggleBtn.textContent = isShowcase ? "切換：教學模式" : "切換：展示模式";
-      saveMode(mode);
-    }
-    function toggleMode() {
-      const isShowcase = document.body.classList.contains("showcase");
-      applyMode(isShowcase ? "guide" : "showcase");
-    }
-    toggleBtn.addEventListener("click", toggleMode);
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "KeyH") toggleMode();
-    });
-    applyMode(getSavedMode() || "guide");
-
-    // =========================
-    // 1) 狀態變數
-    // =========================
-    let treeExpansion = 0;
-    let targetExpansion = 0;
-    let particles = [];
-    let gifts = [];
-    const particlesCount = 800;
-
-    // 備援：Space 強制開啟
-    let spaceHeld = false;
-    window.addEventListener('keydown', (e) => {
-      if (e.code === "Space") spaceHeld = true;
-    });
-    window.addEventListener('keyup', (e) => {
-      if (e.code === "Space") spaceHeld = false;
-    });
-
-    // 禮物爆光圈特效
-    const bursts = []; // {x,y,r,life}
-    function spawnBurst(x, y) { bursts.push({ x, y, r: 10, life: 1 }); }
-
-    // 獎品
-    const prizes = ["iPhone 15", "現金 $1000", "一個擁抱", "再來一次", "聖誕快樂", "特斯拉", "不用加班", "免費飲料"];
-
-    // =========================
-    // 1.5) 單手張開程度計算
-    // =========================
     function clamp01(v) { return Math.max(0, Math.min(1, v)); }
     function dist2(a, b) {
       const dx = (a.x - b.x);
@@ -245,7 +223,6 @@
       return Math.sqrt(dx*dx + dy*dy);
     }
 
-    // 0=握拳/收，1=完全張開
     function calcHandOpenLevel(hand) {
       if (!hand || hand.length < 21) return 0;
 
@@ -254,7 +231,7 @@
         y: (hand[0].y + hand[5].y + hand[9].y + hand[13].y + hand[17].y) / 5
       };
 
-      const palmWidth = dist2(hand[5], hand[17]); // 掌寬當尺度
+      const palmWidth = dist2(hand[5], hand[17]);
       if (!isFinite(palmWidth) || palmWidth <= 1e-6) return 0;
 
       const tips = [4, 8, 12, 16, 20];
@@ -264,50 +241,156 @@
 
       const ratio = avgTipDist / palmWidth;
 
-      // 你可調這兩個數字來改敏感度：
-      const minR = 0.35; // 收起/握拳附近
-      const maxR = 0.85; // 大張開附近
+      const minR = isMobile ? 0.32 : 0.35;
+      const maxR = isMobile ? 0.82 : 0.85;
       return clamp01((ratio - minR) / (maxR - minR));
     }
 
     // =========================
-    // 2) 聖誕樹粒子
+    // DOM
+    // =========================
+    const video = document.getElementById("inputVideo");
+    const overlay = document.getElementById("overlay");
+    const startBtn = document.getElementById("startBtn");
+
+    const switchCamBtn = document.getElementById("switchCamBtn");
+    const toggleModeBtn = document.getElementById("toggleModeBtn");
+    const closeTreeBtn = document.getElementById("closeTreeBtn");
+
+    const statusText = document.getElementById("statusText");
+    function setStatus(t) { statusText.textContent = t; }
+
+    const mainCanvas = document.getElementById("mainCanvas");
+    const ctx = mainCanvas.getContext("2d", { alpha: true });
+
+    const previewCanvas = document.getElementById("camPreview");
+    const previewCtx = previewCanvas.getContext("2d", { alpha: true });
+
+    // =========================
+    // 展示/教學模式
+    // =========================
+    const MODE_KEY = "magic_tree_mode";
+    function getSavedMode() { try { return localStorage.getItem(MODE_KEY); } catch { return null; } }
+    function saveMode(m) { try { localStorage.setItem(MODE_KEY, m); } catch {} }
+    function applyMode(m) {
+      const show = (m === "showcase");
+      document.body.classList.toggle("showcase", show);
+      toggleModeBtn.textContent = show ? "切換：教學模式" : "切換：展示模式";
+      saveMode(m);
+    }
+    function toggleMode() {
+      const show = document.body.classList.contains("showcase");
+      applyMode(show ? "guide" : "showcase");
+    }
+    toggleModeBtn.addEventListener("click", toggleMode);
+    window.addEventListener("keydown", (e) => { if (e.code === "KeyH") toggleMode(); });
+    applyMode(getSavedMode() || "guide");
+
+    // =========================
+    // Canvas resize (DPR)
+    // =========================
+    let width = 0, height = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.max(1, Math.min(DPR_MAX, window.devicePixelRatio || 1));
+      width = window.innerWidth;
+      height = window.innerHeight;
+
+      mainCanvas.style.width = width + "px";
+      mainCanvas.style.height = height + "px";
+      mainCanvas.width = Math.floor(width * dpr);
+      mainCanvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const pW = 160, pH = 120;
+      previewCanvas.style.width = pW + "px";
+      previewCanvas.style.height = pH + "px";
+      previewCanvas.width = Math.floor(pW * dpr);
+      previewCanvas.height = Math.floor(pH * dpr);
+      previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    // =========================
+    // 樹的鎖定開啟（開後暫停偵測 → 點禮物不卡）
+    // =========================
+    let lockActive = false;
+    let lockUntil = 0;
+    const LOCK_IDLE_MS = 15000;
+
+    function ensureLock(now = performance.now()) {
+      lockActive = true;
+      lockUntil = now + LOCK_IDLE_MS;
+      closeTreeBtn.disabled = false;
+      setStatus("樹已開啟：點禮物 🎁（偵測暫停）");
+    }
+
+    function closeLock() {
+      lockActive = false;
+      closeTreeBtn.disabled = true;
+      setStatus("樹已關閉（可再張開觸發）");
+    }
+
+    closeTreeBtn.addEventListener("click", () => closeLock());
+
+    // =========================
+    // 場景狀態
+    // =========================
+    let treeExpansion = 0;
+    let targetExpansion = 0;
+
+    // 桌機備援：Space 全開
+    let spaceHeld = false;
+    window.addEventListener("keydown", (e) => { if (e.code === "Space") spaceHeld = true; });
+    window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; });
+
+    const prizes = ["iPhone 15", "現金 $1000", "一個擁抱", "再來一次", "聖誕快樂", "特斯拉", "不用加班", "免費飲料"];
+
+    // =========================
+    // 禮物 sprite（關鍵：emoji 不每幀 font render，超省）
+    // =========================
+    const giftSprite = document.createElement("canvas");
+    giftSprite.width = 128;
+    giftSprite.height = 128;
+    const gctx = giftSprite.getContext("2d", { alpha: true });
+    gctx.clearRect(0, 0, 128, 128);
+    gctx.textAlign = "center";
+    gctx.textBaseline = "middle";
+    gctx.font = "96px Arial";
+    gctx.fillText("🎁", 64, 70);
+
+    // =========================
+    // 粒子樹（stride 動態降載）
     // =========================
     class Particle {
-      constructor() {
-        this.reset();
-        this.y = Math.random() * 600 - 300;
-      }
+      constructor() { this.reset(); this.y = Math.random() * 600 - 300; }
       reset() {
         this.baseY = Math.random() * 600 - 300;
         this.y = this.baseY;
-
         this.baseRadius = (this.y + 300) * 0.4;
         this.angle = Math.random() * Math.PI * 2;
 
         const r = Math.random();
-        if (r > 0.95) this.color = '#ff3333';
-        else if (r > 0.90) this.color = '#FFD700'; // gold
+        if (r > 0.95) this.color = "#ff3333";
+        else if (r > 0.90) this.color = "#FFD700";
         else this.color = `hsl(${100 + Math.random() * 50}, 80%, 50%)`;
 
         this.speed = Math.random() * 0.02 + 0.01;
         this.size = Math.random() * 2 + 1;
       }
-      update(now) {
+      update(nowS) {
         this.angle += this.speed;
-
         const expandFactor = 1 + (treeExpansion * 2.5);
         const currentRadius = this.baseRadius * expandFactor;
-
-        const floatY = this.baseY + (Math.sin(now * 0.002 + this.baseY) * 20 * treeExpansion);
+        const floatY = this.baseY + (Math.sin(nowS + this.baseY) * 20 * treeExpansion);
 
         this.x = Math.cos(this.angle) * currentRadius;
         this.y = floatY;
         this.z = Math.sin(this.angle) * currentRadius;
       }
       draw() {
-        const fov = 300;
-        const viewDist = 400;
+        const fov = 300, viewDist = 400;
         const scale = fov / (fov + this.z + viewDist);
 
         const x2d = this.x * scale + width / 2;
@@ -318,80 +401,89 @@
         ctx.beginPath();
         ctx.arc(x2d, y2d, this.size * scale, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 1;
       }
     }
 
+    const particles = [];
+    for (let i = 0; i < PARTICLES_BASE; i++) particles.push(new Particle());
+
+    let particleStride = 1; // 1=全畫，2=畫一半，3=畫1/3 …
+
     // =========================
-    // 3) 禮物
+    // 禮物（飄浮）
     // =========================
     class Gift {
-      constructor() {
-        this.x = (Math.random() - 0.5) * 100;
-        this.y = -200;
-        this.z = (Math.random() - 0.5) * 100;
+      constructor(now) {
+        this.theta = Math.random() * Math.PI * 2;
+        this.radius = 110 + Math.random() * 170;
+        this.y = -220 + Math.random() * 360;
+        this.z = (Math.random() - 0.5) * 160;
 
-        this.vy = Math.random() * 2 + 1;
-        this.vx = (Math.random() - 0.5) * 4;
-        this.vz = (Math.random() - 0.5) * 4;
+        this.spin = 0.006 + Math.random() * 0.010;
+        this.vy = (Math.random() - 0.5) * 0.40;
+        this.floatPhase = Math.random() * Math.PI * 2;
 
-        this.size = 20;
+        this.size = 22 + Math.random() * 6;
+
         this.opened = false;
         this.text = "";
         this.life = 1.0;
-        this.scale = 0;
+
+        this.birth = now;
+        this.maxAge = 22000;
 
         this.screenX = null;
         this.screenY = null;
         this.screenR = null;
       }
 
-      update() {
-        if (this.scale < 1) this.scale += 0.1;
+      update(now) {
+        this.theta += this.spin;
+        this.floatPhase += 0.035;
+
+        this.y += this.vy;
+        this.y += Math.sin(this.floatPhase) * 0.35;
+
+        if (this.y < -280) { this.y = -280; this.vy *= -1; }
+        if (this.y >  170) { this.y =  170; this.vy *= -1; }
 
         if (!this.opened) {
-          this.x += this.vx;
-          this.y += this.vy;
-          this.z += this.vz;
-
-          this.vx *= 0.98;
-          this.vz *= 0.98;
-
-          if (this.y > 400) this.life -= 0.02;
+          if (now - this.birth > this.maxAge) this.life -= 0.02;
         } else {
-          this.y -= 1;
-          this.life -= 0.01;
+          this.y -= 0.7;
+          this.life -= 0.015;
         }
       }
 
       draw() {
         if (this.life <= 0) return;
 
-        const fov = 300;
-        const viewDist = 400;
-        const scale = fov / (fov + this.z + viewDist);
+        const fov = 320, viewDist = 420;
+        const x3 = Math.cos(this.theta) * this.radius;
+        const z3 = Math.sin(this.theta) * this.radius + this.z;
 
-        const x2d = this.x * scale + width / 2;
+        const scale = fov / (fov + z3 + viewDist);
+        const x2d = x3 * scale + width / 2;
         const y2d = this.y * scale + height / 2;
 
         ctx.globalAlpha = Math.max(0, Math.min(1, this.life));
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
 
         if (!this.opened) {
-          ctx.font = `${this.size * scale * 2}px Arial`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("🎁", x2d, y2d);
+          // sprite 畫禮物（比每幀 font emoji 快很多）
+          const s = (this.size * scale) * 2.2;
+          ctx.drawImage(giftSprite, x2d - s/2, y2d - s/2, s, s);
 
           this.screenX = x2d;
           this.screenY = y2d;
-          this.screenR = this.size * scale * 1.5;
+          this.screenR = (this.size * scale) * 1.9;
         } else {
-          ctx.font = `bold ${this.size * scale * 1.5}px Arial`;
+          ctx.font = `bold ${Math.max(12, this.size * scale * 1.6)}px Arial`;
           ctx.fillStyle = "#fff";
-          ctx.shadowColor = "#ff0";
-          ctx.shadowBlur = 10;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
+          // 降低 shadow（更順）
+          ctx.shadowColor = "rgba(255,255,0,0.8)";
+          ctx.shadowBlur = 6;
           ctx.fillText(this.text, x2d, y2d);
           ctx.shadowBlur = 0;
         }
@@ -400,142 +492,271 @@
       }
     }
 
-    // 初始化粒子
-    for (let i = 0; i < particlesCount; i++) particles.push(new Particle());
+    const gifts = [];
+    let maxGifts = MAX_GIFTS_BASE;
+    let nextGiftAt = 0;
+
+    function spawnInitialGifts(now) {
+      const add = Math.min(maxGifts, isMobile ? 6 : 8);
+      for (let i = 0; i < add; i++) gifts.push(new Gift(now));
+      nextGiftAt = now + 400;
+    }
+
+    // burst（限制數量避免爆）
+    const bursts = [];
+    function spawnBurst(x, y) {
+      if (bursts.length > (isMobile ? 6 : 10)) bursts.shift();
+      bursts.push({ x, y, r: 10, life: 1 });
+    }
 
     // =========================
-    // 4) MediaPipe Hands
+    // FPS 監控 → 自動降載（最順不卡的核心）
     // =========================
-    let hands = null;
-    let camera = null;
-    let mediapipeReady = false;
+    let fpsFrames = 0;
+    let fpsLastTime = performance.now();
+    let lastFps = 60;
 
-    function onResults(results) {
-      if (!mediapipeReady) {
-        mediapipeReady = true;
-        loading.style.display = "none";
-        setStatus("相機偵測中");
-      }
+    function adaptQuality(now) {
+      fpsFrames++;
+      if (now - fpsLastTime >= 1000) {
+        lastFps = fpsFrames;
+        fpsFrames = 0;
+        fpsLastTime = now;
 
-      // preview（教學模式才畫，展示模式省資源）
-      const isShowcase = document.body.classList.contains("showcase");
-      if (!isShowcase) {
-        try {
-          previewCtx.save();
-          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-          previewCtx.drawImage(results.image, 0, 0, previewCanvas.width, previewCanvas.height);
+        // 粒子 stride 自動調整
+        if (isMobile) {
+          if (lastFps < 28) particleStride = 3;
+          else if (lastFps < 40) particleStride = 2;
+          else particleStride = 1;
 
-          const lm = results.multiHandLandmarks || [];
-          if (lm.length && typeof drawConnectors === "function" && typeof HAND_CONNECTIONS !== "undefined") {
-            for (const landmarks of lm) {
-              drawConnectors(previewCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 1 });
-            }
-          }
-          previewCtx.restore();
-        } catch (err) {}
-      }
+          // 最大禮物數也跟著調
+          if (lastFps < 28) maxGifts = 6;
+          else if (lastFps < 40) maxGifts = 7;
+          else maxGifts = MAX_GIFTS_BASE;
+        } else {
+          if (lastFps < 35) particleStride = 2;
+          else particleStride = 1;
 
-      // 控制邏輯：單手即可（若兩手出現，就取「張開程度較大」那隻）
-      const lm = results.multiHandLandmarks || [];
-      if (lm.length >= 1) {
-        let best = 0;
-        for (const hand of lm) best = Math.max(best, calcHandOpenLevel(hand));
-
-        targetExpansion = best;
-
-        if (best > 0.85) setStatus("樹：開啟中 🎄");
-        else if (best > 0.25) setStatus("偵測到單手");
-        else setStatus("單手偏收（再張開一點）");
-      } else {
-        targetExpansion = 0;
-        setStatus("等待單手");
+          if (lastFps < 35) maxGifts = 10;
+          else maxGifts = MAX_GIFTS_BASE;
+        }
       }
     }
 
-    async function startMediaPipe() {
-      if (typeof Hands === "undefined" || typeof Camera === "undefined") {
-        setStatus("MediaPipe 腳本載入失敗（請檢查網路或 CDN）", true);
-        return;
-      }
+    // =========================
+    // MediaPipe Hands（開樹後暫停 send）
+    // =========================
+    let hands = null;
+    let lastHandsTime = 0;
+
+    // 「張開一下」觸發
+    let openHoldStart = null;
+    const OPEN_TRIGGER_LEVEL = 0.86;
+    const OPEN_HOLD_MS = 420;
+
+    function initHands() {
+      if (typeof Hands === "undefined") throw new Error("MediaPipe Hands 載入失敗（請檢查網路/CDN）");
 
       hands = new Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
 
       hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
+        maxNumHands: 1,
+        modelComplexity: isMobile ? 0 : 1,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
 
-      hands.onResults(onResults);
+      hands.onResults((results) => {
+        const now = performance.now();
 
-      try {
-        camera = new Camera(videoElement, {
-          onFrame: async () => {
-            try {
-              await hands.send({ image: videoElement });
-            } catch (err) {}
-          },
-          width: 640,
-          height: 480
-        });
+        // preview（展示模式省資源）
+        const isShowcase = document.body.classList.contains("showcase");
+        if (!isShowcase) {
+          try {
+            previewCtx.clearRect(0, 0, 160, 120);
+            previewCtx.drawImage(results.image, 0, 0, 160, 120);
+            const lm = results.multiHandLandmarks || [];
+            if (lm.length && typeof drawConnectors === "function" && typeof HAND_CONNECTIONS !== "undefined") {
+              drawConnectors(previewCtx, lm[0], HAND_CONNECTIONS, { color: "#00FF00", lineWidth: 1 });
+            }
+          } catch {}
+        }
 
-        await camera.start();
-        setStatus("相機已啟動");
-      } catch (err) {
-        console.error(err);
-        setStatus("相機啟動失敗：請允許相機或改用 HTTPS/localhost", true);
-      }
+        // 鎖定開啟時不做任何手勢判斷（避免干擾、也省）
+        if (lockActive || spaceHeld) return;
+
+        const lm = results.multiHandLandmarks || [];
+        if (!lm.length) { openHoldStart = null; setStatus("等待單手"); return; }
+
+        const openLevel = calcHandOpenLevel(lm[0]);
+
+        if (openLevel > OPEN_TRIGGER_LEVEL) {
+          if (openHoldStart == null) openHoldStart = now;
+          if (now - openHoldStart > OPEN_HOLD_MS) {
+            ensureLock(now);
+            spawnInitialGifts(now);
+            openHoldStart = null;
+          } else {
+            setStatus("偵測到張開（觸發中…）");
+          }
+        } else {
+          openHoldStart = null;
+          setStatus(openLevel > 0.2 ? "偵測到單手" : "單手偏收");
+        }
+      });
     }
 
     // =========================
-    // 5) 主動畫
+    // Camera (getUserMedia)
     // =========================
-    function animate(now = performance.now()) {
-      // 背景殘影
-      ctx.fillStyle = 'rgba(0,0,0,0.20)';
-      ctx.fillRect(0, 0, width, height);
+    let stream = null;
+    let facingMode = "user"; // "user" | "environment"
 
-      // Space 備援強制全開
-      const forced = spaceHeld ? 1 : null;
-      const goal = (forced !== null) ? forced : targetExpansion;
+    function applyFacingUi() {
+      previewCanvas.style.transform = (facingMode === "user") ? "scaleX(-1)" : "scaleX(1)";
+    }
 
-      // 平滑過渡
-      treeExpansion += (goal - treeExpansion) * 0.10;
+    async function stopCamera() {
+      if (stream) {
+        for (const track of stream.getTracks()) track.stop();
+        stream = null;
+      }
+      video.srcObject = null;
+    }
 
-      // 畫樹
-      for (const p of particles) {
-        p.update(now);
-        p.draw();
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("此瀏覽器不支援相機（請用新版 Safari/Chrome）");
       }
 
-      // 掉禮物
-      if (treeExpansion > 0.8 && Math.random() < 0.03) {
-        gifts.push(new Gift());
-      }
+      await stopCamera();
 
-      // 畫禮物
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+
+      video.setAttribute("playsinline", "");
+      video.muted = true;
+      await video.play();
+
+      applyFacingUi();
+      setStatus("相機已啟動 ✅（張開一下開樹）");
+    }
+
+    function requireHttpsOrLocalhost() {
+      const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      const isHttps = location.protocol === "https:";
+      return isHttps || isLocal;
+    }
+
+    // =========================
+    // 互動：點空中禮物
+    // =========================
+    function handleInput(x, y) {
+      if (!lockActive && !spaceHeld) return;
+
       for (let i = gifts.length - 1; i >= 0; i--) {
         const g = gifts[i];
-        g.update();
+        if (!g.opened && g.screenX != null) {
+          const dx = x - g.screenX;
+          const dy = y - g.screenY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          if (dist < (g.screenR || 0) + 26) {
+            g.opened = true;
+            g.text = prizes[Math.floor(Math.random() * prizes.length)];
+            spawnBurst(g.screenX, g.screenY);
+
+            // 點一次延長開啟時間
+            ensureLock(performance.now());
+            return;
+          }
+        }
+      }
+    }
+
+    window.addEventListener("pointerdown", (e) => {
+      handleInput(e.clientX, e.clientY);
+    }, { passive: true });
+
+    // =========================
+    // 控制按鈕
+    // =========================
+    switchCamBtn.addEventListener("click", async () => {
+      try {
+        facingMode = (facingMode === "user") ? "environment" : "user";
+        await startCamera();
+      } catch (err) {
+        alert("切換鏡頭失敗：" + String(err?.message || err));
+      }
+    });
+
+    // =========================
+    // 主動畫
+    // =========================
+    function animate(now = performance.now()) {
+      adaptQuality(now);
+
+      // 背景殘影
+      ctx.fillStyle = "rgba(0,0,0,0.20)";
+      ctx.fillRect(0, 0, width, height);
+
+      // 超時自動關閉
+      if (lockActive && now > lockUntil) closeLock();
+
+      // 目標展開：鎖定 / Space
+      targetExpansion = spaceHeld ? 1 : (lockActive ? 1 : 0);
+      treeExpansion += (targetExpansion - treeExpansion) * 0.10;
+
+      // 畫樹（注意：粒子用 stride 降載）
+      const nowS = now * 0.002;
+      ctx.globalAlpha = 1;
+      for (let i = 0; i < particles.length; i += particleStride) {
+        const p = particles[i];
+        p.update(nowS);
+        p.draw();
+      }
+      ctx.globalAlpha = 1;
+
+      // 禮物生成（用節奏，不用每幀亂數）
+      if ((lockActive || spaceHeld) && gifts.length < maxGifts && now >= nextGiftAt) {
+        gifts.push(new Gift(now));
+        nextGiftAt = now + GIFT_SPAWN_INTERVAL_MS;
+      }
+
+      // 未鎖定：慢慢清掉禮物
+      if (!lockActive && !spaceHeld) {
+        for (const g of gifts) g.life -= 0.02;
+      }
+
+      // 更新/畫禮物
+      for (let i = gifts.length - 1; i >= 0; i--) {
+        const g = gifts[i];
+        g.update(now);
         g.draw();
         if (g.life <= 0) gifts.splice(i, 1);
       }
 
-      // 爆光圈特效
+      // burst（簡化 + 限量）
       for (let i = bursts.length - 1; i >= 0; i--) {
         const b = bursts[i];
         b.r += 10;
-        b.life -= 0.06;
+        b.life -= 0.08;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, b.life);
         ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 3;
-        ctx.shadowColor = "#ff0";
-        ctx.shadowBlur = 10;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.stroke();
@@ -544,49 +765,40 @@
         if (b.life <= 0) bursts.splice(i, 1);
       }
 
+      // Hands send：只有「樹沒鎖定」才送（最重要：開樹後不卡）
+      if (hands && video.readyState >= 2 && !lockActive && !spaceHeld) {
+        if (now - lastHandsTime > HANDS_INTERVAL_MS) {
+          lastHandsTime = now;
+          hands.send({ image: video }).catch(() => {});
+        }
+      }
+
       requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
 
     // =========================
-    // 6) 點擊互動
+    // 啟動（iOS 必須點擊）
     // =========================
-    function handleInput(x, y) {
-      for (const g of gifts) {
-        if (!g.opened && g.screenX != null) {
-          const dx = x - g.screenX;
-          const dy = y - g.screenY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < (g.screenR || 0) + 20) {
-            g.opened = true;
-            g.text = prizes[Math.floor(Math.random() * prizes.length)];
-            spawnBurst(g.screenX, g.screenY);
-          }
-        }
+    startBtn.addEventListener("click", async () => {
+      try {
+        if (!requireHttpsOrLocalhost()) throw new Error("請用 HTTPS（GitHub Pages）或 localhost 開啟，才能使用相機。");
+        initHands();
+        await startCamera();
+        overlay.style.display = "none";
+        switchCamBtn.disabled = false;
+      } catch (err) {
+        setStatus("啟動失敗");
+        alert(String(err?.message || err));
       }
-    }
+    });
 
-    window.addEventListener('mousedown', (e) => handleInput(e.clientX, e.clientY));
-    window.addEventListener('touchstart', (e) => {
-      if (e.touches && e.touches.length) {
-        handleInput(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
+    window.addEventListener("beforeunload", () => { stopCamera(); });
 
-    // =========================
-    // 7) 啟動
-    // =========================
-    (async function boot() {
-      const isFile = location.protocol === "file:";
-      if (isFile) {
-        setStatus("你正在用 file:// 開啟。相機通常會被擋，請用 localhost 或 HTTPS。", true);
-        return;
-      }
-
-      setStatus("載入 MediaPipe / 啟動相機…");
-      await startMediaPipe();
-    })();
+    // 初始
+    closeTreeBtn.disabled = true;
+    setStatus("尚未開始");
+    applyFacingUi();
   </script>
 </body>
 </html>
