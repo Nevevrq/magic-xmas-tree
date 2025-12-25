@@ -91,7 +91,7 @@
     }
     #badge b { color: #fff; }
 
-    /* ===== 一鍵切換按鈕 ===== */
+    /* 一鍵切換按鈕 */
     #toggleMode {
       position: absolute;
       top: 52px;
@@ -110,15 +110,13 @@
     #toggleMode:hover { background: rgba(255,255,255,0.08); }
     #toggleMode:active { transform: scale(0.98); }
 
-    /* ===== 展示模式：乾淨畫面 ===== */
+    /* 展示模式：乾淨畫面 */
     body.showcase #cam-preview,
     body.showcase #instruction,
     body.showcase #badge {
       display: none !important;
     }
-    body.showcase #toggleMode {
-      top: 10px; /* badge 隱藏後按鈕往上 */
-    }
+    body.showcase #toggleMode { top: 10px; }
   </style>
 </head>
 <body>
@@ -129,9 +127,9 @@
   </div>
 
   <div id="instruction">
-    🙌 對著鏡頭「雙手張開」來打開聖誕樹，點擊掉落的禮物！ 🎁
+    ✋ 對著鏡頭「單手張開」來打開聖誕樹，點擊掉落的禮物！ 🎁
     <br>
-    <span style="opacity:.75;">備援：按住 <b>Space</b> 可打開樹（適合相機被擋的場合）｜按 <b>H</b> 也可切換模式</span>
+    <span style="opacity:.75;">備援：按住 <b>Space</b> 可打開樹｜按 <b>H</b> 切換展示/教學</span>
   </div>
 
   <div id="badge">狀態：<b id="statusText">初始化</b></div>
@@ -155,20 +153,10 @@
     const loading = document.getElementById('loading');
     const statusText = document.getElementById('statusText');
 
-    // 一鍵切換
     const toggleBtn = document.getElementById('toggleMode');
-    const MODE_KEY = "magic_tree_mode"; // localStorage key
+    const MODE_KEY = "magic_tree_mode";
 
     let width = 0, height = 0;
-
-    function setStatus(text, isError = false) {
-      statusText.textContent = text;
-      if (isError) {
-        loading.style.display = "block";
-        loading.style.color = "#ff4d4d";
-        loading.innerHTML = `啟動失敗 / 需要協助<br><span style="font-size:14px; color:#ffd1d1;">${escapeHtml(text)}</span><br><span style="font-size:14px; color:#bbb;">提示：請用 HTTPS 或 localhost 開啟，並允許相機；或按住 Space 仍可示範。</span>`;
-      }
-    }
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, s => ({
@@ -176,10 +164,21 @@
       }[s]));
     }
 
+    function setStatus(text, isError = false) {
+      statusText.textContent = text;
+      if (isError) {
+        loading.style.display = "block";
+        loading.style.color = "#ff4d4d";
+        loading.innerHTML =
+          `啟動失敗 / 需要協助<br>` +
+          `<span style="font-size:14px; color:#ffd1d1;">${escapeHtml(text)}</span><br>` +
+          `<span style="font-size:14px; color:#bbb;">提示：請用 HTTPS 或 localhost 開啟，並允許相機；或按住 Space 仍可示範。</span>`;
+      }
+    }
+
     function resize() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-
       previewCanvas.width = 320;
       previewCanvas.height = 240;
     }
@@ -187,7 +186,7 @@
     resize();
 
     // =========================
-    // 0.5) 展示/教學模式切換（不報錯版本）
+    // 0.5) 展示/教學模式切換
     // =========================
     function getSavedMode() {
       try { return localStorage.getItem(MODE_KEY); } catch { return null; }
@@ -196,7 +195,6 @@
       try { localStorage.setItem(MODE_KEY, mode); } catch {}
     }
     function applyMode(mode) {
-      // mode: "showcase" | "guide"
       const isShowcase = (mode === "showcase");
       document.body.classList.toggle("showcase", isShowcase);
       toggleBtn.textContent = isShowcase ? "切換：教學模式" : "切換：展示模式";
@@ -206,28 +204,22 @@
       const isShowcase = document.body.classList.contains("showcase");
       applyMode(isShowcase ? "guide" : "showcase");
     }
-
-    // 按鈕切換
     toggleBtn.addEventListener("click", toggleMode);
-
-    // 鍵盤切換：H
     window.addEventListener("keydown", (e) => {
       if (e.code === "KeyH") toggleMode();
     });
-
-    // 讀取上次模式
     applyMode(getSavedMode() || "guide");
 
     // =========================
     // 1) 狀態變數
     // =========================
-    let treeExpansion = 0;      // 0=關, 1=全開
+    let treeExpansion = 0;
     let targetExpansion = 0;
     let particles = [];
     let gifts = [];
     const particlesCount = 800;
 
-    // 互動備援：Space 開啟
+    // 備援：Space 強制開啟
     let spaceHeld = false;
     window.addEventListener('keydown', (e) => {
       if (e.code === "Space") spaceHeld = true;
@@ -238,12 +230,45 @@
 
     // 禮物爆光圈特效
     const bursts = []; // {x,y,r,life}
-    function spawnBurst(x, y) {
-      bursts.push({ x, y, r: 10, life: 1 });
-    }
+    function spawnBurst(x, y) { bursts.push({ x, y, r: 10, life: 1 }); }
 
     // 獎品
     const prizes = ["iPhone 15", "現金 $1000", "一個擁抱", "再來一次", "聖誕快樂", "特斯拉", "不用加班", "免費飲料"];
+
+    // =========================
+    // 1.5) 單手張開程度計算
+    // =========================
+    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+    function dist2(a, b) {
+      const dx = (a.x - b.x);
+      const dy = (a.y - b.y);
+      return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    // 0=握拳/收，1=完全張開
+    function calcHandOpenLevel(hand) {
+      if (!hand || hand.length < 21) return 0;
+
+      const palmCenter = {
+        x: (hand[0].x + hand[5].x + hand[9].x + hand[13].x + hand[17].x) / 5,
+        y: (hand[0].y + hand[5].y + hand[9].y + hand[13].y + hand[17].y) / 5
+      };
+
+      const palmWidth = dist2(hand[5], hand[17]); // 掌寬當尺度
+      if (!isFinite(palmWidth) || palmWidth <= 1e-6) return 0;
+
+      const tips = [4, 8, 12, 16, 20];
+      let sum = 0;
+      for (const i of tips) sum += dist2(hand[i], palmCenter);
+      const avgTipDist = sum / tips.length;
+
+      const ratio = avgTipDist / palmWidth;
+
+      // 你可調這兩個數字來改敏感度：
+      const minR = 0.35; // 收起/握拳附近
+      const maxR = 0.85; // 大張開附近
+      return clamp01((ratio - minR) / (maxR - minR));
+    }
 
     // =========================
     // 2) 聖誕樹粒子
@@ -392,7 +417,7 @@
         setStatus("相機偵測中");
       }
 
-      // preview (debug) — 展示模式時也沒必要重畫，可省資源
+      // preview（教學模式才畫，展示模式省資源）
       const isShowcase = document.body.classList.contains("showcase");
       if (!isShowcase) {
         try {
@@ -401,7 +426,7 @@
           previewCtx.drawImage(results.image, 0, 0, previewCanvas.width, previewCanvas.height);
 
           const lm = results.multiHandLandmarks || [];
-          if (lm.length) {
+          if (lm.length && typeof drawConnectors === "function" && typeof HAND_CONNECTIONS !== "undefined") {
             for (const landmarks of lm) {
               drawConnectors(previewCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 1 });
             }
@@ -410,30 +435,20 @@
         } catch (err) {}
       }
 
-      // 控制邏輯
+      // 控制邏輯：單手即可（若兩手出現，就取「張開程度較大」那隻）
       const lm = results.multiHandLandmarks || [];
+      if (lm.length >= 1) {
+        let best = 0;
+        for (const hand of lm) best = Math.max(best, calcHandOpenLevel(hand));
 
-      if (lm.length === 2) {
-        const hand1 = lm[0];
-        const hand2 = lm[1];
+        targetExpansion = best;
 
-        const x1 = hand1?.[8]?.x;
-        const x2 = hand2?.[8]?.x;
-
-        if (typeof x1 === "number" && typeof x2 === "number") {
-          const distance = Math.abs(x1 - x2);
-          let openLevel = (distance - 0.2) * 2;
-          openLevel = Math.max(0, Math.min(1, openLevel));
-
-          targetExpansion = openLevel;
-          setStatus(openLevel > 0.8 ? "樹：開啟中 🎄" : "偵測到雙手");
-        } else {
-          targetExpansion = 0;
-          setStatus("偵測到雙手(資料不足)");
-        }
+        if (best > 0.85) setStatus("樹：開啟中 🎄");
+        else if (best > 0.25) setStatus("偵測到單手");
+        else setStatus("單手偏收（再張開一點）");
       } else {
         targetExpansion = 0;
-        setStatus(lm.length === 1 ? "偵測到單手" : "等待雙手");
+        setStatus("等待單手");
       }
     }
 
@@ -479,22 +494,29 @@
     // 5) 主動畫
     // =========================
     function animate(now = performance.now()) {
+      // 背景殘影
       ctx.fillStyle = 'rgba(0,0,0,0.20)';
       ctx.fillRect(0, 0, width, height);
 
+      // Space 備援強制全開
       const forced = spaceHeld ? 1 : null;
       const goal = (forced !== null) ? forced : targetExpansion;
+
+      // 平滑過渡
       treeExpansion += (goal - treeExpansion) * 0.10;
 
+      // 畫樹
       for (const p of particles) {
         p.update(now);
         p.draw();
       }
 
+      // 掉禮物
       if (treeExpansion > 0.8 && Math.random() < 0.03) {
         gifts.push(new Gift());
       }
 
+      // 畫禮物
       for (let i = gifts.length - 1; i >= 0; i--) {
         const g = gifts[i];
         g.update();
@@ -502,6 +524,7 @@
         if (g.life <= 0) gifts.splice(i, 1);
       }
 
+      // 爆光圈特效
       for (let i = bursts.length - 1; i >= 0; i--) {
         const b = bursts[i];
         b.r += 10;
